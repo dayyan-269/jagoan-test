@@ -18,7 +18,7 @@
 ### Backend
 
 * copy file .env.example menjadi .env
-* buat database serta sesuaikan dengan konfigurasi .env, lalu anda bisa import db dari folder `/database/jagoan-test`.
+* buat database serta sesuaikan dengan konfigurasi .env, lalu anda bisa import db dari folder `/database/dump-jagoan-test.sql`.
 * jalankan command `composer install`.
 * jalankan command `php artisan key:generate` untuk setup app key.
 * jalankan command `php artisan serve` untuk memulai dev server.
