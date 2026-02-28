@@ -6,6 +6,7 @@ use App\Http\Requests\Housing\Resident\StoreResidentRequest;
 use App\Http\Requests\Housing\Resident\UpdateResidentRequest;
 use App\housing\Resident;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ResidentController extends Controller
 {
@@ -14,7 +15,7 @@ class ResidentController extends Controller
      */
     public function index(): JsonResponse
     {
-        $residents = Resident::latest()->paginate(15);
+        $residents = Resident::latest()->get();
         return response()->json([
             'message' => 'request success',
             'data' => $residents,
@@ -32,10 +33,9 @@ class ResidentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreResidentRequest $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
-        $data = $request->validated();
-
+        //return  response()->json($request->all());
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('residents', 'public');
             $data['photo'] = $path;

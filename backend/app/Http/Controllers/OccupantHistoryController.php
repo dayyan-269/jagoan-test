@@ -70,6 +70,56 @@ class OccupantHistoryController extends Controller
         //
     }
 
+    public function assignHouse(Request $request, int $houseId): JsonResponse
+    {
+        try {
+            $data = $request->only(['resident_id', 'house_id', 'amount', 'description']);
+            $data = $request->validate([
+                'resident_id' => ['required', 'exists:residents,id'],
+                'date' => ['required'],
+                'amount' => ['required', 'numeric'],
+                'description' => ['nullable', 'string']
+            ]);
+
+            $currentDate = $data['date'] ?? now()->toDateString();
+
+            OccupantHistory::where('resident_id', $data['resident_id'])
+                ->where('house_id', $houseId)
+                ->whereNull('end_date')
+                ->update([
+                    'end_date' => $currentDate,
+                ]);
+
+            DB::beginTransaction();
+
+            $occupant = OccupantHistory::create([
+                'resident_id' => $data['resident_id'],
+                'house_id' => $houseId,
+                'start_id' => $currentDate,
+            ]);
+
+            HousePayment::create([
+                'occupant_history_id' => $occupant['id'],
+                'payment_date' => $currentDate,
+                'payment_status' => 'Lunas',
+                'payment_amount' => $data['amount']
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'request success',
+                'data' => 'success',
+            ], 201);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([
+                'message' => 'request failed',
+                'data' => $th->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -90,23 +140,27 @@ class OccupantHistoryController extends Controller
         return response()->json([
             'message' => 'request success',
             'data' => null,
-        ]);
+        ], 201);
     }
 
-    public function updateEndDate(Request $request, int $occupantHistoryId): JsonResponse
+    public function updateEndDate(Request $request, int $houseId): JsonResponse
     {
         $data = $request->validate([
             'end_date' => ['required', 'date'],
         ]);
 
-        OccupantHistory::where('id', $occupantHistoryId)->update([
-            'end_date' => $data['end_date']
-        ]);
+        OccupantHistory::where('house_id', $houseId)
+            ->whereNull('end_date')
+            ->latest()
+            ->limit(1)
+            ->update([
+                'end_date' => $data['end_date'],
+            ]);
 
         return response()->json([
             'message' => 'request success',
             'data' => null,
-        ]);
+        ], 201);
     }
 
     /**

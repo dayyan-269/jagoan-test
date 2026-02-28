@@ -48,10 +48,10 @@ class StatsController extends Controller
             ->whereYear('spendings.date', $year)
             ->groupBy('month')
             ->select([
-                DB::raw('CONVERT(SUM(spending_types.amount), UNSIGNED) as spending_total'),
                 DB::raw('MONTH(spendings.date) as month'),
+                DB::raw('CONVERT(SUM(spending_types.amount), UNSIGNED) as spending_total'),
             ])
-            ->get();
+            ->pluck( 'spending_total', 'month');
 
         $monthlyDue = DB::table('due_payments')
             ->join('due_types', 'due_payments.due_type_id', 'due_types.id')
@@ -61,7 +61,7 @@ class StatsController extends Controller
                 DB::raw('SUM(due_types.amount) as earning_total'),
                 DB::raw('MONTH(due_payments.date) as month')
             ])
-            ->get();
+            ->pluck('earning_total', 'month');
 
         $monthlyHouse = DB::table('house_payments')
             ->whereYear('payment_date', $year)
@@ -70,20 +70,22 @@ class StatsController extends Controller
                 DB::raw('SUM(payment_amount) as earning_total'),
                 DB::raw('MONTH(payment_date) as month')
             ])
-            ->get();
+            ->pluck( 'earning_total', 'month');
 
-        $monthlySpending = $monthlySpending->map(fn($item) => [
-            ... (array) $item,
-            'month' => Carbon::createFromFormat('m', $item->month)->format('F'),
-        ]);
+        
+        $monthlySpending = collect(range(1, 12))->map(function ($month) use ($monthlySpending) {
+            return [
+                'month' => Carbon::create()->month($month)->format('F'),
+                'total_pengeluaran' => $monthlySpending->get($month, 0),
+            ];
+        });
 
-        $monthlyEarning = $monthlyDue->merge($monthlyHouse)
-            ->groupBy('month')
-            ->map(fn($item, $currMonth) => [
-                'earning_total' => $item->sum('earning_total'),
-                'month' => Carbon::createFromFormat('m', $currMonth)->format('F'),
-            ])
-            ->values();
+        $monthlyEarning = collect(range(1, 12))->map(function ($month) use ($monthlyDue, $monthlyHouse) {
+            return [
+                'month' => Carbon::create()->month($month)->format('F'),
+                'total_pendapatan' => (int) $monthlyHouse->get($month, 0) + (int) $monthlyDue->get($month, 0),
+            ];
+        });
 
         return response()->json([
             'message' => 'request success',

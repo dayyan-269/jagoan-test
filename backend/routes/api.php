@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
@@ -31,9 +30,10 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('houses/{id}/payment', HousePaymentController::class);
 
     Route::apiResource('occupant-history', OccupantHistoryController::class)->except('insert');
-    Route::put('occupant-history/{occupantHistoryId}/end', [OccupantHistoryController::class, 'updateEndDate']);
+    Route::put('occupant-history/{houseId}/end', [OccupantHistoryController::class, 'updateEndDate']);
+    Route::post('occupant-history/{houseId}/assign', [OccupantHistoryController::class,'assignHouse']);
 
-    Route::apiResource('residents', ResidentController::class);
+    Route::apiResource('residents', ResidentController::class)->withoutMiddleware('auth:api');
 
     // Finances Routes
     Route::apiResource('due-types', DueTypeController::class);
