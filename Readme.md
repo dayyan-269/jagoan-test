@@ -17,15 +17,18 @@
 
 ### Backend
 
+* navigasi ke folder backend
 * copy file .env.example menjadi .env
 * buat database serta sesuaikan dengan konfigurasi .env, lalu anda bisa import db dari folder `/database/dump-jagoan-test.sql`.
 * jalankan command `composer install`.
 * jalankan command `php artisan key:generate` untuk setup app key.
+* jalankan command `php artisan storage:link` untuk set storage link.
 * jalankan command `php artisan serve` untuk memulai dev server.
 
 ### Frontend
 
 * email admin@email.com | password: password
+* navigasi ke folder backend
 * jalankan command `npm i` untuk install dependancy
 * masukkan url api server yang dimulai pada konfigurasi file di `/src/env.ts`.
 * jalankan `npm run dev` untuk memulai dev server.
