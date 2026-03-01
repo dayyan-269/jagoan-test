@@ -33,6 +33,10 @@
 * masukkan url api server yang dimulai pada konfigurasi file di `/src/env.ts`.
 * jalankan `npm run dev` untuk memulai dev server.
 
+# ERD
+
+![erd](https://github.com/dayyan-269/jagoan-test/blob/master/JAGO/ERD%20-%20Penyewaan.jpg)
+
 # Fitur
 
 ## Login
