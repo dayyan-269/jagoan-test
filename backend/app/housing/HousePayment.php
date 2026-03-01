@@ -19,4 +19,8 @@ class HousePayment extends Model
     {
         return $this->belongsTo(OccupantHistory::class, 'occupant_history_id', 'id');
     }
+
+    protected $casts = [
+        'payment_date' => 'date:d F Y',
+    ];
 }

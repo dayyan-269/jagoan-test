@@ -8,6 +8,7 @@ use App\Http\Requests\Housing\HousePayment\StoreHousePaymentRequest;
 use App\Http\Requests\Housing\HousePayment\UpdateHousePaymentRequest;
 use App\housing\HousePayment;
 use App\housing\OccupantHistory;
+use Illuminate\Support\Carbon;
 
 class HousePaymentController extends Controller
 {
@@ -44,31 +45,37 @@ class HousePaymentController extends Controller
         try {
             $data = $request->validated();
 
-            $checkIfAnyHouseIsOccupied = OccupantHistory::where('house_id', $data['house_id'])
-                ->where('resident_id', $data['resident_id'])
-                ->where('house_id', $data['house_id'])
+            $checkIfAnyHouseIsOccupied = OccupantHistory::where('resident_id', $data['resident_id'])
                 ->whereNull('end_date')
-                ->orderBy('created_at', 'DESC')
+                ->latest()
                 ->first();
 
             if (!$checkIfAnyHouseIsOccupied) {
-                $checkIfAnyHouseIsOccupied = OccupantHistory::create([
-                    'house_id' => $data['house_id'],
-                    'resident_id' => $data['resident_id'],
-                    'start_date' => $data['payment_date'],
-                ]);
+                return response()->json([
+                    'message' => 'no house is occupied by this resident',
+                    'data' => null,
+                ], 404);
             }
 
-            $housePayment = HousePayment::create([
-                ...$data,
-                'occupant_history_id' => $checkIfAnyHouseIsOccupied->id
-            ]);
+            $finalPayment = [];
+            $startDate = Carbon::parse($data['payment_date']);
+
+            for ($i = 0; $i < $data['month_amount']; $i++) {
+                $finalPayment[] = [
+                    'payment_amount' => $data['payment_amount'],
+                    'payment_status' => $data['payment_status'] ? 'Lunas' : 'Tidak Lunas',
+                    'payment_date' => $startDate->copy()->addMonthsNoOverflow($i)->format('Y-m-d'),
+                    'occupant_history_id' => $checkIfAnyHouseIsOccupied->id
+                ];
+            }
+
+            HousePayment::insert($finalPayment);
 
             DB::commit();
 
             return response()->json([
                 'message' => 'request success',
-                'data' => $housePayment,
+                'data' => $finalPayment,
             ]);
         } catch (\Throwable $th) {
             DB::rollback();
@@ -83,7 +90,7 @@ class HousePaymentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(int $id, int $housePaymentId): JsonResponse
+    public function show(int $housePaymentId): JsonResponse
     {
         $housePayment = HousePayment::with(['occupantHistory', 'occupantHistory.resident', 'occupantHistory.house'])
             ->where('id', $housePaymentId)
@@ -110,7 +117,10 @@ class HousePaymentController extends Controller
     {
         $data = $request->validated();
 
-        HousePayment::where('id', $housePaymentId)->update($data);
+        HousePayment::where('id', $housePaymentId)->update([
+            ...$data,
+            'payment_status' => $data['payment_status'] ? 'Lunas' : "Belum Lunas",
+        ]);
 
         return response()->json([
             'message' => 'request success',

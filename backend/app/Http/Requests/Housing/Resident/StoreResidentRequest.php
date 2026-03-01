@@ -25,7 +25,7 @@ class StoreResidentRequest extends FormRequest
     {
         return [
             'name' => ['string', 'max:255'],
-            'photo' => ['nullable', 'file'],
+            'photo' => ['nullable'],
             'marital_status' => ['nullable', 'string', 'max:50'],
             'occupant_status' => ['nullable', 'string', 'max:50'],
             'mobile_number' => ['nullable', 'string', 'max:20'],

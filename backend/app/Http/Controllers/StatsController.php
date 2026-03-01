@@ -36,9 +36,24 @@ class StatsController extends Controller
 
         $housePaymentTotal = DB::table('house_payments')
             ->join('occupant_histories', 'house_payments.occupant_history_id', 'occupant_histories.id')
+            ->where('payment_status', 'Lunas')
+            ->sum('house_payments.payment_amount');
+
+        $duePaymentMonthly = DB::table('due_payments')
+            ->join('due_types', 'due_payments.due_type_id', 'due_types.id')
+            ->whereMonth('due_payments.date', $month)
+            ->whereYear('due_payments.date', $year)
+            ->sum('due_types.amount');
+
+        $housePaymentMonthly = DB::table('house_payments')
+            ->join('occupant_histories', 'house_payments.occupant_history_id', 'occupant_histories.id')
+            ->where('payment_status', 'Lunas')
+            ->whereMonth('house_payments.payment_date', $month)
+            ->whereYear('house_payments.payment_date', $year)
             ->sum('house_payments.payment_amount');
 
         $earningTotal = $duePaymentTotal + $housePaymentTotal;
+        $earningMonthly = $housePaymentMonthly + $duePaymentMonthly;
         $saldoTotal = abs($earningTotal - (int) $spendingTotal);
 
         // Data for the graph
@@ -51,7 +66,7 @@ class StatsController extends Controller
                 DB::raw('MONTH(spendings.date) as month'),
                 DB::raw('CONVERT(SUM(spending_types.amount), UNSIGNED) as spending_total'),
             ])
-            ->pluck( 'spending_total', 'month');
+            ->pluck('spending_total', 'month');
 
         $monthlyDue = DB::table('due_payments')
             ->join('due_types', 'due_payments.due_type_id', 'due_types.id')
@@ -65,14 +80,15 @@ class StatsController extends Controller
 
         $monthlyHouse = DB::table('house_payments')
             ->whereYear('payment_date', $year)
+            ->where('payment_status', 'Lunas')
             ->groupBy('month')
             ->select([
                 DB::raw('SUM(payment_amount) as earning_total'),
                 DB::raw('MONTH(payment_date) as month')
             ])
-            ->pluck( 'earning_total', 'month');
+            ->pluck('earning_total', 'month');
 
-        
+
         $monthlySpending = collect(range(1, 12))->map(function ($month) use ($monthlySpending) {
             return [
                 'month' => Carbon::create()->month($month)->format('F'),
@@ -90,7 +106,7 @@ class StatsController extends Controller
         return response()->json([
             'message' => 'request success',
             'data' => [
-                'earning_total' => $earningTotal,
+                'earning_total' => $earningMonthly,
                 'monthly_spending' => (int) $spendingThisMonth,
                 'saldo_total' => $saldoTotal,
                 'monthly_stats' => [
@@ -103,45 +119,33 @@ class StatsController extends Controller
 
     public function getMonthlySpending(Request $request): JsonResponse
     {
-        $month = $request->month ?? now()->month;
-        $year = $request->year ?? now()->year;
+        $startDate = $request->start_date ?? now()->toDateString();
+        $endDate = $request->end_date ?? now()->addMonthNoOverflow(1)->toDateString();
 
         $spending = Spending::with('spendingType')
-            ->when($month, function (Builder $q) use ($month) {
-                return $q->whereMonth('date', $month);
-            })
-            ->when($year, function (Builder $q) use ($year) {
-                return $q->whereYear('date', $year);
-            })
+            ->whereBetween('date', [$startDate, $endDate])
             ->get();
+
+        $spendingTotal = $spending->sum('spending_type.amount');
 
         return response()->json([
             'message' => 'request success',
-            'data' => $spending,
+            'data' => ['spending' => $spending, 'spending_total' => $spendingTotal],
         ]);
     }
 
     public function getMonthlyEarning(Request $request): JsonResponse
     {
-        $month = $request->month ?? now()->month;
-        $year = $request->year ?? now()->year;
+        $startDate = $request->start_date ?? now()->toDateString();
+        $endDate = $request->end_date ?? now()->addMonthNoOverflow(1)->toDateString();
 
         $rawDuePayment = DuePayment::with('dueType', 'resident')
-            ->when($month, function (Builder $q) use ($month) {
-                return $q->whereMonth('date', $month);
-            })
-            ->when($year, function (Builder $q) use ($year) {
-                return $q->whereYear('date', $year);
-            })
+            ->whereBetween('date', [$startDate, $endDate])
             ->get();
 
         $rawHousePayment = HousePayment::with('occupantHistory', 'occupantHistory.resident')
-            ->when($month, function (Builder $q) use ($month) {
-                return $q->whereMonth('payment_date', $month);
-            })
-            ->when($year, function (Builder $q) use ($year) {
-                return $q->whereYear('payment_date', $year);
-            })
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where('payment_status', 'Lunas')
             ->get();
 
         $housePayment = $rawHousePayment->map(function ($item) {
@@ -165,10 +169,11 @@ class StatsController extends Controller
         });
 
         $earning = $housePayment->merge($duePayment)->sortBy('date', descending: true)->values();
+        $earningTotal = collect($earning)->sum('payment_amount');
 
         return response()->json([
             'message' => 'request success',
-            'data' => $earning,
+            'data' => ['earning' => $earning, 'earning_total' => $earningTotal],
         ]);
     }
 }

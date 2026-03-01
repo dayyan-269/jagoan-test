@@ -27,8 +27,8 @@ class StoreDuePaymentRequest extends FormRequest
             'resident_id' => ['required', 'numeric', 'exists:residents,id'],
             'due_type_id' => ['required', 'numeric', 'exists:due_types,id'],
             'date' => ['required', 'date'],
-            'payment_count' => ['required', 'string'],
             'description' => ['nullable', 'string'],
+            'month_amount' => ['required'],
         ];
     }
 

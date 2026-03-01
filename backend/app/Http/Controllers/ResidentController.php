@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\finance\DuePayment;
+use App\housing\HousePayment;
 use App\Http\Requests\Housing\Resident\StoreResidentRequest;
 use App\Http\Requests\Housing\Resident\UpdateResidentRequest;
 use App\housing\Resident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ResidentController extends Controller
 {
@@ -22,6 +25,41 @@ class ResidentController extends Controller
         ]);
     }
 
+    public function getOccupiedResidents(): JsonResponse
+    {
+        $residents = DB::table('occupant_histories')
+            ->join('residents', 'occupant_histories.resident_id', 'residents.id')
+            ->whereNull('occupant_histories.end_date')
+            ->orderBy('residents.name', 'ASC')
+            ->select([
+                'residents.*'
+            ])
+            ->get();
+
+        return response()->json([
+            'message' => 'request success',
+            'data' => $residents,
+        ]);
+    }
+
+    public function getResidentHistory(int $id): JsonResponse
+    {
+        $duePayment = DuePayment::with('dueType')->where('resident_id', $id)->orderBy('date', 'DESC')->get();
+        $housePayment = HousePayment::whereHas('occupantHistory', function ($query) use ($id) {
+                $query->where('resident_id', $id);
+            })
+            ->orderBy('payment_date')
+            ->get();
+
+        return response()->json([
+            'message' => 'request success',
+            'data' => [
+                'due' => $duePayment,
+                'house' => $housePayment
+            ],
+        ]);
+    }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -33,9 +71,10 @@ class ResidentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreResidentRequest $request): JsonResponse
     {
-        //return  response()->json($request->all());
+        $data = $request->validated();
+
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('residents', 'public');
             $data['photo'] = $path;

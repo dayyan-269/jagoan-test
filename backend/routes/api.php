@@ -27,13 +27,15 @@ Route::middleware('auth:api')->group(function () {
 
     // Housing Routes
     Route::apiResource('houses', HouseController::class);
-    Route::apiResource('houses/{id}/payment', HousePaymentController::class);
+    Route::apiResource('house-payment', HousePaymentController::class);
 
     Route::apiResource('occupant-history', OccupantHistoryController::class)->except('insert');
     Route::put('occupant-history/{houseId}/end', [OccupantHistoryController::class, 'updateEndDate']);
     Route::post('occupant-history/{houseId}/assign', [OccupantHistoryController::class,'assignHouse']);
-
+    
     Route::apiResource('residents', ResidentController::class)->withoutMiddleware('auth:api');
+    Route::get('residents/{id}/history', [ResidentController::class, 'getResidentHistory']);
+    Route::get('residents-occupied', [ResidentController::class, 'getOccupiedResidents']);
 
     // Finances Routes
     Route::apiResource('due-types', DueTypeController::class);

@@ -6,6 +6,8 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Finance\DuePayment\StoreDuePaymentRequest;
 use App\Http\Requests\Finance\DuePayment\UpdateDuePaymentRequest;
 use App\finance\DuePayment;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DuePaymentController extends Controller
 {
@@ -15,8 +17,8 @@ class DuePaymentController extends Controller
     public function index()
     {
         $payment = DuePayment::with('dueType', 'resident')
-            ->latest()
-            ->paginate(15);
+            ->orderBy('date', 'DESC')
+            ->get();
 
         return response()->json([
             'messsage' => 'request success',
@@ -37,16 +39,34 @@ class DuePaymentController extends Controller
      */
     public function store(StoreDuePaymentRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        DB::beginTransaction();
+        try {
+            $data = $request->validated();
+            $finalData = [];
 
-        // TODO: implementasi batch insert untuk beberapa bulan sekaligus
+            for ($i = 0; $i < $data['month_amount']; $i++) {
+                $finalData[] = [
+                    'resident_id' => $data['resident_id'],
+                    'due_type_id' => $data['due_type_id'],
+                    'date' => Carbon::parse($data['date'])->addMonthsNoOverflow($i)->format('Y-m-d'),
+                    'description' => $data['description'],
+                ];
+            }
 
-        $payment = DuePayment::create($data);
+            $payment = DuePayment::insert($finalData);
+            DB::commit();
 
-        return response()->json([
-            'message' => 'request success',
-            'data' => $payment,
-        ]);
+            return response()->json([
+                'message' => 'request success',
+                'data' => $payment,
+            ], 201);
+        } catch (\Throwable $th) {
+            DB::rollback();
+            return response()->json([
+                'message' => 'date',
+                'data' => $th->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -55,7 +75,7 @@ class DuePaymentController extends Controller
     public function show(int $id): JsonResponse
     {
         $payment = DuePayment::with('resident', 'dueType')->where('id', $id)->first();
-        
+
         return response()->json([
             'message' => 'request success',
             'data' => $payment,

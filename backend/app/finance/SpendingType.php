@@ -13,4 +13,8 @@ class SpendingType extends Model
         'name',
         'amount',
     ];
+
+    protected $casts = [
+        'amount' => 'integer',
+    ];
 }

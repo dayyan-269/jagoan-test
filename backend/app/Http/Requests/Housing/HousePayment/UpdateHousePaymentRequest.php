@@ -24,11 +24,9 @@ class UpdateHousePaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'house_id' => ['required', 'numeric', 'exists:house,id'],
-            'resident_id' => ['required', 'numeric', 'exists:resident,id'],
             'payment_date' => ['required', 'date'],
             'payment_amount' => ['required', 'numeric', 'min:0'],
-            'payment_status' => ['required', 'string'],
+            'payment_status' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
         ];
     }

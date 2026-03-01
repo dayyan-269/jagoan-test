@@ -14,7 +14,7 @@ class SpendingController extends Controller
      */
     public function index()
     {
-        $items = Spending::with("spendingType")->orderBy("date", "desc")->get();
+        $items = Spending::with("spendingType")->whereHas('spendingType')->orderBy("date", "desc")->get();
 
         return response()->json([
             "message" => "request success",

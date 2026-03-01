@@ -24,12 +24,12 @@ class StoreHousePaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'house_id' => ['required', 'numeric', 'exists:houses,id'],
             'resident_id' => ['required', 'numeric', 'exists:residents,id'],
             'payment_date' => ['required', 'date'],
             'payment_amount' => ['required', 'numeric', 'min:0'],
-            'payment_status' => ['required', 'string'],
+            'payment_status' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
+            'month_amount' => ['required', 'numeric', 'min:1'],
         ];
     }
 
