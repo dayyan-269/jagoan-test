@@ -1,9 +1,9 @@
 import env from "@/env";
 
 export interface IDueType {
-  id?: number;
-  name?: string;
-  amount?: string;
+  id: string;
+  name: string;
+  amount: string;
 }
 
 export interface IEditDueTypePayload {
@@ -11,7 +11,7 @@ export interface IEditDueTypePayload {
   payload: Omit<IDueType, "id">;
 }
 
-export const getDueTypes = async () => {
+export const getDueTypes = async (): Promise<IDueType[] | null> => {
   const jwt = localStorage.getItem("authToken");
   try {
     const response = await fetch(`${env.baseUrl}/due-types`, {
@@ -30,7 +30,7 @@ export const getDueTypes = async () => {
     return data;
   } catch (error) {
     console.error("Error fetching due types:", error);
-    throw error;
+    return [];
   }
 };
 

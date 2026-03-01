@@ -1,14 +1,31 @@
 import env from "@/env";
 
 export interface ISpendingPayment {
-  spending_type_id: number;
+  id: string;
   date: string;
+  description?: string | undefined | null;
+  spending_type: {
+    id: string;
+    name: string;
+    amount: string;
+  };
 }
 
-export const getSpendingPayments = async () => {
-  const jwt = localStorage.getItem("jwt");
+export interface ISpendingPaymentPayload {
+  spending_type_id: string;
+  date: string;
+  description?: string | undefined | null;
+}
+
+export interface ISpendingEditPayload {
+  id: string;
+  payload: ISpendingPaymentPayload;
+}
+
+export const getSpendingPayments = async (): Promise<ISpendingPayment[]> => {
+  const jwt = localStorage.getItem("authToken");
   try {
-    const response = await fetch(`${env.baseUrl}/spending-payments`, {
+    const response = await fetch(`${env.baseUrl}/spending`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -25,13 +42,16 @@ export const getSpendingPayments = async () => {
     return data;
   } catch (error) {
     console.error("Error:", error);
+    return [];
   }
 };
 
-export const getSpendingPaymentById = async (id: number) => {
-  const jwt = localStorage.getItem("jwt");
+export const getSpendingPaymentById = async (
+  id: number,
+): Promise<ISpendingPayment | undefined> => {
+  const jwt = localStorage.getItem("authToken");
   try {
-    const response = await fetch(`${env.baseUrl}/spending-payments/${id}`, {
+    const response = await fetch(`${env.baseUrl}/spending/${id}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -48,13 +68,14 @@ export const getSpendingPaymentById = async (id: number) => {
     return data;
   } catch (error) {
     console.error("Error:", error);
+    return;
   }
 };
 
-export const createSpendingPayment = async (payload: ISpendingPayment) => {
-  const jwt = localStorage.getItem("jwt");
+export const createSpendingPayment = async (payload: ISpendingPaymentPayload) => {
+  const jwt = localStorage.getItem("authToken");
   try {
-    const response = await fetch(`${env.baseUrl}/spending-payments`, {
+    const response = await fetch(`${env.baseUrl}/spending`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -76,20 +97,22 @@ export const createSpendingPayment = async (payload: ISpendingPayment) => {
 };
 
 export const editSpendingPayment = async (
-  id: number,
-  payload: ISpendingPayment,
+  editPayload: ISpendingEditPayload,
 ) => {
-  const jwt = localStorage.getItem("jwt");
+  const jwt = localStorage.getItem("authToken");
   try {
-    const response = await fetch(`${env.baseUrl}/spending-payments/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-        Accept: "application/json",
+    const response = await fetch(
+      `${env.baseUrl}/spending/${editPayload.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify(editPayload.payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
     if (!response.ok) {
       throw new Error("Failed to edit spending payment");
     }
@@ -100,10 +123,10 @@ export const editSpendingPayment = async (
   }
 };
 
-export const deleteSpendingPayment = async (id: number) => {
-  const jwt = localStorage.getItem("jwt");
+export const deleteSpendingPayment = async (id: string) => {
+  const jwt = localStorage.getItem("authToken");
   try {
-    const response = await fetch(`${env.baseUrl}/spending-payments/${id}`, {
+    const response = await fetch(`${env.baseUrl}/spending/${id}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${jwt}`,

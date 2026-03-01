@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Filter } from "lucide-react";
+import * as z from "zod";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -19,13 +20,24 @@ import SkeletonDashboard from "@/components/skeleton-dashboard";
 import { isAuthenticated } from "@/handlers/authHandler";
 import { getMonthlyStats, getFinancialReport } from "@/handlers/finance";
 import {
+  keepPreviousData,
   queryOptions,
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
-import { sumArray } from "@/utils";
+import { formatRupiah } from "@/utils";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { useState } from "react";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   beforeLoad: () => {
@@ -52,7 +64,26 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   pendingComponent: SkeletonDashboard,
 });
 
+const filterSchema = z.object({
+  start_date: z.string(),
+  end_date: z.string(),
+});
+
 function RouteComponent() {
+  const [filter, setFilter] = useState<{
+    start_date: string;
+    end_date: string;
+  }>({
+    start_date: "",
+    end_date: "",
+  });
+
+  const filterForm = useForm<z.infer<typeof filterSchema>>({
+    resolver: zodResolver(filterSchema),
+    defaultValues: filter,
+    mode: "onSubmit",
+  });
+
   const queryClient = useQueryClient();
 
   const { data: monthlyStats } = useSuspenseQuery(
@@ -64,22 +95,26 @@ function RouteComponent() {
 
   const { data: financialReport } = useSuspenseQuery(
     queryOptions({
-      queryKey: ["financialReport"],
-      queryFn: () => getFinancialReport(),
+      queryKey: ["financialReport", filter],
+      queryFn: () => getFinancialReport(filter),
+      placeholderData: keepPreviousData,
     }),
   );
+
+  console.log(financialReport);
+  
 
   const chartConfigEarning = {
     total_pendapatan: {
       label: "Pemasukan",
-      color: "#b1b45b"
+      color: "#b1b45b",
     },
   } satisfies ChartConfig;
 
   const chartConfigSpending = {
     total_pengeluaran: {
       label: "Pemasukan",
-      color: "#009869"
+      color: "#009869",
     },
   } satisfies ChartConfig;
 
@@ -87,6 +122,13 @@ function RouteComponent() {
   const statsSpending = monthlyStats?.monthly_stats.spending;
 
   // TODO: FILTER by tanggal
+  const handleFilter = (payload: {
+    start_date?: string;
+    end_date?: string;
+  }) => {
+    setFilter(payload);
+    toast("data telah difilter");
+  };
 
   return (
     <div className="">
@@ -98,7 +140,7 @@ function RouteComponent() {
             <CardContent>
               <div className="text-sm text-white">Total Saldo</div>
               <div className="mt-2 text-2xl font-semibold text-white">
-                {monthlyStats?.saldo_total || 0}
+                {formatRupiah(monthlyStats?.saldo_total) || "Rp 0"}
               </div>
             </CardContent>
           </Card>
@@ -107,7 +149,7 @@ function RouteComponent() {
             <CardContent>
               <div className="text-sm text-white">Pemasukan Bulan Ini</div>
               <div className="mt-2 text-2xl font-semibold text-white">
-                {monthlyStats?.earning_total || 0}
+                {formatRupiah(monthlyStats?.earning_total) || "Rp 0"}
               </div>
             </CardContent>
           </Card>
@@ -116,7 +158,7 @@ function RouteComponent() {
             <CardContent>
               <div className="text-sm text-white">Pengeluaran Bulan Ini</div>
               <div className="mt-2 text-2xl font-semibold text-white">
-                {monthlyStats?.monthly_spending || 0}
+                {formatRupiah(monthlyStats?.monthly_spending) || "Rp 0"}
               </div>
             </CardContent>
           </Card>
@@ -137,7 +179,11 @@ function RouteComponent() {
               axisLine={false}
             />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="total_pendapatan" fill={chartConfigEarning.total_pendapatan.color} radius={4} />
+            <Bar
+              dataKey="total_pendapatan"
+              fill={chartConfigEarning.total_pendapatan.color}
+              radius={4}
+            />
           </BarChart>
         </ChartContainer>
 
@@ -156,7 +202,11 @@ function RouteComponent() {
               axisLine={false}
             />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="total_pengeluaran" fill={chartConfigSpending.total_pengeluaran.color} radius={4} />
+            <Bar
+              dataKey="total_pengeluaran"
+              fill={chartConfigSpending.total_pengeluaran.color}
+              radius={4}
+            />
           </BarChart>
         </ChartContainer>
       </div>
@@ -168,23 +218,59 @@ function RouteComponent() {
               Filter Laporan Finansial
             </h1>
           </CardHeader>
-          <CardContent className="grid grid-cols-[2fr_2fr_0.5fr] gap-x-3">
-            <div className="flex flex-col">
-              <Label className="mb-3">Tanggal Awal</Label>
-              <Input type="date" placeholder="Masukkan tanggal awal" required />
-            </div>
-            <div className="flex flex-col">
-              <Label className="mb-3">Tanggal Akhir</Label>
-              <Input
-                type="date"
-                placeholder="Masukkan tanggal akhir"
-                required
+          <CardContent>
+            <form
+              onSubmit={filterForm.handleSubmit(handleFilter)}
+              className="grid grid-cols-[2fr_2fr_0.5fr] gap-x-3">
+              <Controller
+                control={filterForm.control}
+                name="start_date"
+                render={({ field, fieldState }) => (
+                  <Field className="flex flex-col">
+                    <FieldLabel
+                      className="mb-3"
+                      data-invalid={fieldState.invalid}>
+                      Tanggal Akhir
+                    </FieldLabel>
+                    <Input
+                      type="date"
+                      placeholder="Masukkan tanggal awal"
+                      {...field}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
               />
-            </div>
-            <Button className="mt-auto">
-              <Filter />
-              Filter
-            </Button>
+              <Controller
+                control={filterForm.control}
+                name="end_date"
+                render={({ field, fieldState }) => (
+                  <Field className="flex flex-col">
+                    <FieldLabel
+                      className="mb-3"
+                      data-invalid={fieldState.invalid}>
+                      Tanggal Akhir
+                    </FieldLabel>
+                    <Input
+                      type="date"
+                      placeholder="Masukkan tanggal akhir"
+                      {...field}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+              <Button className="mt-auto" type="submit">
+                <Filter />
+                Filter
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
@@ -205,12 +291,14 @@ function RouteComponent() {
                 </tr>
               </TableHeader>
               <TableBody>
-                {financialReport?.earnings?.map((earning) => (
+                {financialReport?.earnings.earning?.map((earning) => (
                   <TableRow key={earning.id}>
                     <TableCell>{earning.date}</TableCell>
                     <TableCell>{earning.resident_name}</TableCell>
                     <TableCell>{earning.payment_type}</TableCell>
-                    <TableCell>{earning.payment_amount}</TableCell>
+                    <TableCell>
+                      {formatRupiah(earning.payment_amount)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -218,7 +306,9 @@ function RouteComponent() {
                 <TableRow>
                   <TableCell colSpan={2} />
                   <TableCell>Total Pemasukan</TableCell>
-                  <TableCell>Rp {sumArray(financialReport?.earnings, 'total_pendapatan')}</TableCell>
+                  <TableCell>
+                    {formatRupiah(financialReport?.earnings.earning_total)}
+                  </TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
@@ -240,12 +330,14 @@ function RouteComponent() {
                 </tr>
               </TableHeader>
               <TableBody>
-                {financialReport?.spendings?.map((spending) => (
+                {financialReport?.spendings.spending?.map((spending) => (
                   <TableRow key={spending.id}>
                     <TableCell>{spending.date}</TableCell>
                     <TableCell>{spending.description}</TableCell>
                     <TableCell>{spending.spending_type.name}</TableCell>
-                    <TableCell>{spending.spending_type.amount}</TableCell>
+                    <TableCell>
+                      {formatRupiah(spending.spending_type.amount)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -253,7 +345,9 @@ function RouteComponent() {
                 <TableRow>
                   <TableCell colSpan={2} />
                   <TableCell>Total Pengeluaran</TableCell>
-                  <TableCell>Rp 10.000.000</TableCell>
+                  <TableCell>
+                    {formatRupiah(financialReport?.spendings.spending_total)}
+                  </TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

@@ -9,6 +9,9 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { EllipsisVertical, PlusCircle, Timer, UserKey } from "lucide-react";
 import { DIALOGUE_STATE, type DialogueType } from "@/types/dialogue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EllipsisVertical, PlusCircle, Timer, UserKey } from "lucide-react";
 
 import BaseDialog from "@/components/base-dialog";
 import BaseSheet from "@/components/base-sheet";
@@ -63,11 +65,10 @@ import {
   type IHouse,
 } from "@/handlers/housing/house";
 import { getResidents } from "@/handlers/housing/resident";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { formatRupiah } from "@/utils";
 
 const houseSchema = z.object({
   number: z.string().nonempty("No. rumah harus diisi"),
@@ -155,7 +156,7 @@ function RouteComponent() {
     resolver: zodResolver(assignSchema),
     defaultValues: {
       resident_id: "",
-      amount: 0,
+      amount: "0",
       date: new Date().toISOString().split("T")[0],
       description: "",
     },
@@ -206,6 +207,7 @@ function RouteComponent() {
     mutationFn: (assignPayload: IAssignPayload) => assignHouse(assignPayload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["houses"] });
+      await queryClient.invalidateQueries({ queryKey: ["housesHistory"] });
     },
   });
 
@@ -214,6 +216,7 @@ function RouteComponent() {
       endContract(endContractPayload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["houses"] });
+      await queryClient.invalidateQueries({ queryKey: ["housesHistory"] });
     },
   });
 
@@ -227,7 +230,7 @@ function RouteComponent() {
   ): void => {
     createHouseMutation.mutate(payload);
     setActiveDialogue(DIALOGUE_STATE.CLOSE);
-    toast("Data jenis iuran berhasil dibuat");
+    toast("Data rumah berhasil dibuat");
   };
 
   const handleEdit = (
@@ -239,7 +242,7 @@ function RouteComponent() {
 
     editHouseMutation.mutate({ id: houseDetail.id, payload: payload });
     setActiveDialogue(DIALOGUE_STATE.CLOSE);
-    toast("Data jenis iuran berhasil diubah");
+    toast("Data rumah berhasil diubah");
   };
 
   const handleDelete = (): void => {
@@ -249,7 +252,7 @@ function RouteComponent() {
 
     deleteHouseMutation.mutate(houseDetail.id);
     setActiveDialogue(DIALOGUE_STATE.CLOSE);
-    toast("Data jenis iuran berhasil dihapus");
+    toast("Data rumah berhasil dihapus");
   };
 
   const handleAssignHouse = (payload): void => {
@@ -404,9 +407,15 @@ function RouteComponent() {
                             <TableRow key={`py-${payment.id}`}>
                               <TableCell>{payment.payment_date}</TableCell>
                               <TableCell>
-                                <Badge>{payment.payment_status}</Badge>
+                                {payment.payment_status === 'Lunas' ? (
+                                  <Badge>{payment.payment_status}</Badge>
+                                ) : (
+                                  <Badge variant={"destructive"}>
+                                    {payment.payment_status}
+                                  </Badge>
+                                )}
                               </TableCell>
-                              <TableCell>Rp {payment.payment_amount}</TableCell>
+                              <TableCell>{formatRupiah(payment.payment_amount)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -562,9 +571,15 @@ function RouteComponent() {
             name="description"
             control={assignForm.control}
             render={({ field, fieldState }) => (
-              <Field className="flex flex-col mt-3" data-invalid={fieldState.invalid}>
+              <Field
+                className="flex flex-col mt-3"
+                data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor="date">Deskripsi</FieldLabel>
-                <Textarea placeholder="Masukkan deskripsi..." {...field} aria-invalid={fieldState.invalid} />
+                <Textarea
+                  placeholder="Masukkan deskripsi..."
+                  {...field}
+                  aria-invalid={fieldState.invalid}
+                />
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />
                 )}

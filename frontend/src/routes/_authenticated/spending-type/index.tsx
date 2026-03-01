@@ -45,6 +45,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { DIALOGUE_STATE, type DialogueType } from "@/types/dialogue";
 import { Field, FieldError } from "@/components/ui/field";
 import SkeletonTable from "@/components/skeleton-table";
+import { formatRupiah } from "@/utils";
 
 const spendingTypeSchema = z.object({
   name: z.string().nonempty("Nama jenis pengeluaran harus diisi"),
@@ -192,11 +193,11 @@ function RouteComponent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {spendingTypes.map((type, index) => (
+              {spendingTypes.map((type, index: number) => (
                 <TableRow key={type.id}>
                   <TableCell>{index + 1}.</TableCell>
                   <TableCell>{type.name}</TableCell>
-                  <TableCell>Rp {type.amount}</TableCell>
+                  <TableCell>{formatRupiah(type.amount)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

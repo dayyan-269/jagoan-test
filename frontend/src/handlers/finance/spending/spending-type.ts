@@ -1,9 +1,9 @@
 import env from "@/env";
 
 export interface ISpendingType {
-  id?: number
-  name?: string;
-  amount?: string;
+  id: number
+  name: string;
+  amount: string;
 }
 
 export interface IEditSpendingTypePayload {
@@ -11,7 +11,7 @@ export interface IEditSpendingTypePayload {
   payload: Omit<ISpendingType, "id">;
 }
 
-export const getSpendingTypes = async () => {
+export const getSpendingTypes = async (): Promise<ISpendingType[] | undefined> => {
   const jwt = localStorage.getItem("authToken");
   try {
     const response = await fetch(`${env.baseUrl}/spending-types`, {

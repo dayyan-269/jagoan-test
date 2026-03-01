@@ -41,9 +41,20 @@ interface ISpendingReport {
   };
 }
 
+interface IFilterPayload {
+  start_date?: string;
+  end_date?: string;
+}
+
 export interface IFinancialReport {
-  spendings: ISpendingReport[];
-  earnings: IEarningReport[];
+  spendings: {
+    spending_total: number;
+    spending: ISpendingReport[];
+  };
+  earnings: {
+    earning_total: number;
+    earning: IEarningReport[];
+  };
 }
 
 export const getMonthlyStats = async () => {
@@ -65,6 +76,7 @@ export const getMonthlyStats = async () => {
     const { data } = await response.json();
     return data;
   } catch (error) {
+    console.error(error);
     return {
       message: "Failed to fetch monthly stats",
       data: error,
@@ -72,14 +84,15 @@ export const getMonthlyStats = async () => {
   }
 };
 
-export const getFinancialReport = async (): Promise<
-  IFinancialReport | IErrorResponse
-> => {
+export const getFinancialReport = async (
+  payload?: IFilterPayload,
+): Promise<IFinancialReport | IErrorResponse> => {
   const jwt = localStorage.getItem("authToken");
   try {
     const responseSpending = await fetch(
-      `${env.baseUrl}/stats/monthly/spending`,
+      `${env.baseUrl}/stats/monthly/spending?start_date=${payload?.start_date}&end_date=${payload?.end_date}`,
       {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -89,10 +102,10 @@ export const getFinancialReport = async (): Promise<
     );
 
     const responseEarning = await fetch(
-      `${env.baseUrl}/stats/monthly/earning`,
+      `${env.baseUrl}/stats/monthly/earning?start_date=${payload?.start_date}&end_date=${payload?.end_date}`,
       {
+        method: "GET",
         headers: {
-          method: "GET",
           "Content-Type": "application/json",
           Accept: "application/json",
           Authorization: `Bearer ${jwt}`,
@@ -109,8 +122,21 @@ export const getFinancialReport = async (): Promise<
     const { data: spendingData } = await responseSpending.json();
     const { data: earningData } = await responseEarning.json();
 
-    return { spendings: spendingData, earnings: earningData };
+    const finalData = {
+      spendings: {
+        spending: spendingData.spending,
+        spending_total: spendingData.spending_total,
+      },
+      earnings: {
+        earning: earningData.earning,
+        earning_total: earningData.earning_total,
+      },
+    };
+    console.log(finalData);
+
+    return finalData;
   } catch (error) {
+    console.error(error);
     return {
       message: "Failed to fetch financial report",
       data: error,

@@ -32,7 +32,7 @@ const BaseSheet: FC<BaseSheetProps> = ({
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
         <form onSubmit={onSubmit}>
-          <ScrollArea className="h-full">
+          <ScrollArea className="">
             <div className="flex flex-col px-4">{children}</div>
           </ScrollArea>
           {footer ? <SheetFooter>{footer}</SheetFooter> : null}

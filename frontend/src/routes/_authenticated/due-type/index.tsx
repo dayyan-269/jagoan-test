@@ -8,7 +8,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {DIALOGUE_STATE, type DialogueType} from "@/types/dialogue";
+import { DIALOGUE_STATE, type DialogueType } from "@/types/dialogue";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,6 +43,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { formatRupiah } from "@/utils";
 
 const dueTypeSchema = z.object({
   name: z.string().nonempty("Nama jenis iuran harus diisi"),
@@ -108,7 +109,7 @@ function RouteComponent() {
 
   const createDueTypeMutation = useMutation({
     mutationFn: (payload: Omit<IDueType, "id">) => createDueType(payload),
-    onSuccess: async () =>{
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["dueTypes"] });
     },
   });
@@ -127,10 +128,7 @@ function RouteComponent() {
     },
   });
 
-  const openDialogue = async (
-    dialogue: DialogueType,
-    dueType: IDueType = {},
-  ) => {
+  const openDialogue = async (dialogue: DialogueType, dueType: IDueType) => {
     setActiveDialogue(dialogue);
     setDueTypeDetail(dueType);
   };
@@ -145,7 +143,7 @@ function RouteComponent() {
     if (!dueTypeDetail?.id) {
       throw new Error("Due type ID is missing");
     }
-    editDueTypeMutation.mutate({ id: dueTypeDetail.id, payload: payload });
+    editDueTypeMutation.mutate({ id: parseInt(dueTypeDetail.id), payload: payload });
     setActiveDialogue(DIALOGUE_STATE.CLOSE);
     toast("Data jenis iuran berhasil diubah");
   };
@@ -154,7 +152,7 @@ function RouteComponent() {
     if (!dueTypeDetail?.id) {
       throw new Error("Due type ID is missing");
     }
-    deleteDueTypeMutation.mutate(dueTypeDetail.id);
+    deleteDueTypeMutation.mutate(parseInt(dueTypeDetail.id));
     setActiveDialogue(DIALOGUE_STATE.CLOSE);
     toast("Data jenis iuran berhasil dihapus");
   };
@@ -187,7 +185,7 @@ function RouteComponent() {
                 <TableRow key={dueType.id}>
                   <TableCell>{index + 1}.</TableCell>
                   <TableCell>{dueType.name}</TableCell>
-                  <TableCell>{dueType.amount}</TableCell>
+                  <TableCell>{formatRupiah(parseInt(dueType.amount))}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
